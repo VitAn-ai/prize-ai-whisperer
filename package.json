@@ -3,3 +3,6 @@
     "@supabase/supabase-js": "^2.81.0"
   }
 }
+"scripts": {
+  "build:dev": "vite build --mode development"
+}
