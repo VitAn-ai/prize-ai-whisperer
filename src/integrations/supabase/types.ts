@@ -14,7 +14,130 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      contests: {
+        Row: {
+          channels: string[] | null
+          conditions: string[] | null
+          confidence_score: number | null
+          created_at: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          prizes: string[] | null
+          source_text: string | null
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          channels?: string[] | null
+          conditions?: string[] | null
+          confidence_score?: number | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          prizes?: string[] | null
+          source_text?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          channels?: string[] | null
+          conditions?: string[] | null
+          confidence_score?: number | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          prizes?: string[] | null
+          source_text?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      subscription_tracking: {
+        Row: {
+          channel_name: string
+          checked_at: string | null
+          contest_id: string | null
+          id: string
+          subscribed: boolean | null
+          unsubscribed_at: string | null
+          user_id: number
+        }
+        Insert: {
+          channel_name: string
+          checked_at?: string | null
+          contest_id?: string | null
+          id?: string
+          subscribed?: boolean | null
+          unsubscribed_at?: string | null
+          user_id: number
+        }
+        Update: {
+          channel_name?: string
+          checked_at?: string | null
+          contest_id?: string | null
+          id?: string
+          subscribed?: boolean | null
+          unsubscribed_at?: string | null
+          user_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_tracking_contest_id_fkey"
+            columns: ["contest_id"]
+            isOneToOne: false
+            referencedRelation: "contests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_participations: {
+        Row: {
+          contest_id: string | null
+          id: string
+          joined_at: string | null
+          subscription_checked: boolean | null
+          telegram_first_name: string | null
+          telegram_username: string | null
+          unsubscribed_at: string | null
+          user_id: number
+        }
+        Insert: {
+          contest_id?: string | null
+          id?: string
+          joined_at?: string | null
+          subscription_checked?: boolean | null
+          telegram_first_name?: string | null
+          telegram_username?: string | null
+          unsubscribed_at?: string | null
+          user_id: number
+        }
+        Update: {
+          contest_id?: string | null
+          id?: string
+          joined_at?: string | null
+          subscription_checked?: boolean | null
+          telegram_first_name?: string | null
+          telegram_username?: string | null
+          unsubscribed_at?: string | null
+          user_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_participations_contest_id_fkey"
+            columns: ["contest_id"]
+            isOneToOne: false
+            referencedRelation: "contests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
