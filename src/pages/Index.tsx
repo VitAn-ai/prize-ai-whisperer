@@ -1,103 +1,156 @@
 import { useEffect, useState } from "react";
-import { Gift, TrendingUp, Users } from "lucide-react";
+import { BottomNav } from "@/components/BottomNav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import BottomNav from "@/components/BottomNav";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Contest {
+  id: string;
+  title: string;
+  description: string;
+  prizes: string[];
+  confidence_score: number;
+  end_date: string;
+  created_at: string;
+}
 
 const Index = () => {
-  const [userName, setUserName] = useState("Пользователь");
+  const [contests, setContests] = useState<Contest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    if (window.Telegram?.WebApp) {
-      const user = window.Telegram.WebApp.initDataUnsafe.user;
-      if (user?.first_name) {
-        setUserName(user.first_name);
-      }
-    }
+    fetchContests();
+    
+    // Подписываемся на новые конкурсы в реальном времени
+    const channel = supabase
+      .channel('contests-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'contests'
+        },
+        (payload) => {
+          console.log('Новый конкурс:', payload);
+          setContests(prev => [payload.new as Contest, ...prev]);
+          toast({
+            title: "🎁 Новый конкурс!",
+            description: (payload.new as Contest).title,
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  const stats = [
-    { icon: Gift, label: "Активных конкурсов", value: "12", color: "text-primary" },
-    { icon: TrendingUp, label: "Побед", value: "3", color: "text-green-500" },
-    { icon: Users, label: "Участий", value: "45", color: "text-blue-500" },
-  ];
+  const fetchContests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contests')
+        .select('*')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      setContests(data || []);
+    } catch (error) {
+      console.error('Ошибка загрузки конкурсов:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось загрузить конкурсы",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openTelegram = () => {
+    window.open('https://t.me/YOUR_BOT_USERNAME', '_blank');
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <div className="container mx-auto px-4 py-6">
-        {/* Приветствие */}
+      <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">
-            Привет, {userName}! 👋
+          <h1 className="text-4xl font-bold text-foreground mb-2">
+            Prize AI Whisperer
           </h1>
-          <p className="text-muted-foreground">
-            Твой AI-помощник в поиске призов
+          <p className="text-muted-foreground text-lg mb-4">
+            Умный помощник для участия в конкурсах Telegram
           </p>
+          <Button onClick={openTelegram} size="lg" className="w-full sm:w-auto">
+            🤖 Открыть бота в Telegram
+          </Button>
         </div>
 
-        {/* Статистика */}
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          {stats.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <Card key={stat.label} className="text-center">
-                <CardContent className="pt-6 pb-4">
-                  <Icon className={cn("w-8 h-8 mx-auto mb-2", stat.color)} />
-                  <p className="text-2xl font-bold mb-1">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground leading-tight">
-                    {stat.label}
-                  </p>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Последние конкурсы */}
         <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">Новые конкурсы</h2>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="hover:bg-muted/50 transition-colors">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Розыгрыш iPhone 16 Pro</CardTitle>
-                  <CardDescription>
-                    Завершится через 2 дня • Подписаться на 3 канала
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">
-                      Приз: 120 000 ₽
-                    </span>
-                    <Button size="sm">Участвовать</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-3">
-          <Button variant="outline" className="h-20 flex flex-col gap-2">
-            <Gift className="w-6 h-6" />
-            <span className="text-sm">Добавить конкурс</span>
-          </Button>
-          <Button variant="outline" className="h-20 flex flex-col gap-2">
-            <TrendingUp className="w-6 h-6" />
-            <span className="text-sm">Аналитика</span>
-          </Button>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">
+            Активные конкурсы
+          </h2>
+          {loading ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Загрузка конкурсов...</p>
+            </div>
+          ) : contests.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <p className="text-muted-foreground">
+                  Пока нет активных конкурсов. Пересылайте сообщения с конкурсами боту в Telegram!
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {contests.map((contest) => (
+                <Card key={contest.id}>
+                  <CardHeader>
+                    <CardTitle className="flex items-start justify-between">
+                      <span>{contest.title}</span>
+                      <span className="text-sm font-normal bg-primary/10 text-primary px-2 py-1 rounded">
+                        {contest.confidence_score}%
+                      </span>
+                    </CardTitle>
+                    {contest.description && (
+                      <CardDescription>{contest.description}</CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    {contest.prizes && contest.prizes.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-sm font-semibold mb-1">🏆 Призы:</p>
+                        <ul className="list-disc list-inside text-sm text-muted-foreground">
+                          {contest.prizes.map((prize, idx) => (
+                            <li key={idx}>{prize}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {contest.end_date && (
+                      <p className="text-sm text-muted-foreground mb-3">
+                        ⏰ До: {new Date(contest.end_date).toLocaleDateString('ru-RU')}
+                      </p>
+                    )}
+                    <Button onClick={openTelegram} className="w-full">
+                      Участвовать
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-
       <BottomNav />
     </div>
   );
 };
 
 export default Index;
-
-function cn(...args: any[]) {
-  return args.filter(Boolean).join(" ");
-}
